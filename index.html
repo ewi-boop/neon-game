@@ -1,1 +1,585 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON SNAKE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+        }
 
+        /* Animované pozadí neonových čárek pro menu/leaderboard */
+        .background-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .line {
+            position: absolute;
+            width: 1px;
+            height: 50px;
+            background: #fff;
+            opacity: 0.2;
+            filter: blur(1px);
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        /* Společné styly */
+        .neon-text {
+            text-shadow: 0 0 15px #fff;
+        }
+
+        .neon-button {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            text-shadow: 0 0 15px #fff;
+            transition: box-shadow 0.3s, transform 0.1s;
+        }
+
+        .neon-button:hover {
+            box-shadow: 0 0 20px #fff;
+            transform: scale(1.05);
+        }
+
+        .neon-button:active {
+            animation: blink 0.1s;
+            transform: scale(0.95);
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        /* Hlavní menu */
+        #menu {
+            text-align: center;
+            z-index: 10;
+        }
+
+        #menu h1 {
+            font-size: clamp(2.5em, 8vw, 5em);
+            margin: 0;
+            animation: neon-glow 2s infinite alternate;
+        }
+
+        @keyframes neon-glow {
+            0% { text-shadow: 0 0 5px #fff, 0 0 10px #fff; }
+            100% { text-shadow: 0 0 20px #fff, 0 0 30px #fff; }
+        }
+
+        #version {
+            font-size: 1em;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+
+        /* Herní plocha */
+        #game {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 5;
+        }
+
+        #score {
+            font-size: clamp(1.5em, 4vw, 3em);
+            margin-bottom: 20px;
+            z-index: 6;
+            position: relative;
+        }
+
+        #canvas {
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px #fff, inset 0 0 20px #000;
+            background: #000;
+            max-width: 95vw;
+            max-height: 95vh;
+            display: block;
+        }
+
+        @keyframes field-blink {
+            0%, 100% { box-shadow: 0 0 20px #fff, inset 0 0 20px #000; }
+            50% { box-shadow: 0 0 50px #fff, 0 0 100px #00ffff, inset 0 0 30px #fff; }
+        }
+
+        /* Game Over */
+        #game-over {
+            display: none;
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            animation: fade-in 0.8s ease-out;
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border: 1px solid #fff;
+            box-shadow: 0 0 30px #fff;
+            border-radius: 10px;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        #game-over input {
+            background: transparent;
+            border: 1px solid #fff;
+            color: #fff;
+            margin: 15px 0;
+            padding: 10px;
+            text-align: center;
+            font-size: 1.2em;
+            width: 200px;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        #game-over input:focus {
+            outline: none;
+            box-shadow: 0 0 15px #fff;
+        }
+
+        /* Leaderboard */
+        #leaderboard {
+            display: none;
+            text-align: center;
+            z-index: 10;
+            padding: 50px;
+        }
+
+        #leaderboard h2 {
+            font-size: clamp(2em, 6vw, 4em);
+            margin-bottom: 40px;
+        }
+
+        #leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 40px 0;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #leaderboard-list li {
+            font-size: 1.5em;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding: 15px 0;
+            text-shadow: 0 0 10px currentColor;
+            transition: color 0.3s;
+        }
+
+        #leaderboard-list li:hover {
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        #leaderboard-list li:nth-child(1) { color: #ffd700; }
+        #leaderboard-list li:nth-child(2) { color: #c0c0c0; }
+        #leaderboard-list li:nth-child(3) { color: #cd7f32; }
+
+        /* Countdown */
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(5em, 20vw, 15em);
+            z-index: 20;
+            color: #fff;
+            text-shadow: 0 0 30px #fff;
+            display: none;
+            animation: neon-glow 1s infinite alternate;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-lines"></div>
+
+    <!-- Hlavní menu -->
+    <div id="menu">
+        <h1 class="neon-text">✨ NEON SNAKE ✨</h1>
+        <button class="neon-button" id="play">▶ PLAY</button>
+        <button class="neon-button" id="leaderboard-btn">🏆 LEADERBOARD</button>
+        <div id="version">verze 1.0 by Ondrašku</div>
+    </div>
+
+    <!-- Herní obrazovka -->
+    <div id="game">
+        <div id="score">Score: 0</div>
+        <canvas id="canvas"></canvas>
+        <div id="countdown"></div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="game-over">
+        <h2 class="neon-text">GAME OVER 💀</h2>
+        <p class="neon-text">Your score: <span id="final-score"></span></p>
+        <p>Enter your name:</p>
+        <input type="text" id="player-name" maxlength="20" placeholder="Anonymous">
+        <button class="neon-button" id="submit-score">Submit</button>
+    </div>
+
+    <!-- Leaderboard -->
+    <div id="leaderboard">
+        <h2 class="neon-text">🏆 LEADERBOARD 🏆</h2>
+        <ul id="leaderboard-list"></ul>
+        <button class="neon-button" id="back-to-menu">🔙 Back to Menu</button>
+    </div>
+
+    <script>
+        // Animované pozadí čárek pro menu
+        function createLines() {
+            const container = document.querySelector('.background-lines');
+            for (let i = 0; i < 80; i++) {
+                const line = document.createElement('div');
+                line.classList.add('line');
+                line.style.left = `${Math.random() * 100}vw`;
+                line.style.animationDuration = `${Math.random() * 8 + 8}s`;
+                line.style.animationDelay = `${Math.random() * 5}s`;
+                line.style.height = `${Math.random() * 80 + 40}px`;
+                line.style.opacity = Math.random() * 0.2 + 0.2;
+                container.appendChild(line);
+            }
+        }
+        createLines();
+
+        // Herní proměnné
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const TILE_COUNT = 28; // Počet dlaždic pro responsivní grid
+        let gridSize = 20;
+        let gridCount = TILE_COUNT;
+        let snake = [{ x: Math.floor(gridCount / 2), y: Math.floor(gridCount / 2) }];
+        let food = {};
+        let direction = { x: 1, y: 0 };
+        let score = 0;
+        let gameRunning = false;
+        let gameInterval;
+        let lines = []; // Neonové čárky v canvasu
+        let countdownActive = false;
+        const UPDATE_INTERVAL = 120; // ms
+        const TIME_PER_UPDATE = UPDATE_INTERVAL / 1000; // s
+
+        // Resize canvas
+        function resizeCanvas() {
+            const size = Math.floor(Math.min(window.innerWidth * 0.95, window.innerHeight * 0.85));
+            canvas.width = size;
+            canvas.height = size;
+            gridSize = Math.floor(size / TILE_COUNT);
+            gridCount = TILE_COUNT;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); // Inicializace
+
+        // Neonové čárky v canvasu - shodné parametry jako v CSS
+        function initLines() {
+            lines = [];
+            for (let i = 0; i < 80; i++) {
+                const duration = Math.random() * 8 + 8; // s
+                const height = Math.random() * 80 + 40;
+                const delay = Math.random() * 5; // s
+                const speed = (canvas.height + height) * TIME_PER_UPDATE / duration;
+                const delay_updates = delay / TIME_PER_UPDATE;
+                const delay_y = speed * delay_updates;
+                lines.push({
+                    x: Math.random() * canvas.width,
+                    y: -height - delay_y,
+                    speed: speed,
+                    height: height,
+                    opacity: Math.random() * 0.2 + 0.2 // 0.2-0.4
+                });
+            }
+        }
+
+        function updateLines() {
+            lines.forEach(line => {
+                line.y += line.speed;
+                if (line.y > canvas.height) {
+                    line.y = -line.height;
+                    line.x = Math.random() * canvas.width;
+                }
+            });
+        }
+
+        function drawLines() {
+            ctx.save();
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 1; // Shodné s CSS blur(1px)
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+            lines.forEach(line => {
+                ctx.globalAlpha = line.opacity;
+                ctx.beginPath();
+                ctx.moveTo(line.x, line.y);
+                ctx.lineTo(line.x, line.y + line.height);
+                ctx.stroke();
+            });
+            ctx.restore();
+            ctx.globalAlpha = 1;
+        }
+
+        // Klávesy pro ovládání
+        const keys = {
+            ArrowUp: { x: 0, y: -1 },
+            ArrowDown: { x: 0, y: 1 },
+            ArrowLeft: { x: -1, y: 0 },
+            ArrowRight: { x: 1, y: 0 },
+            w: { x: 0, y: -1 },
+            s: { x: 0, y: 1 },
+            a: { x: -1, y: 0 },
+            d: { x: 1, y: 0 }
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning || countdownActive) return;
+            if (keys[e.key] && (direction.x !== -keys[e.key].x || direction.y !== -keys[e.key].y)) {
+                direction = keys[e.key];
+            }
+        });
+
+        // Krásný neon glow pro objekt
+        function drawGlowRect(x, y, size, color, blurLevels = 4) {
+            for (let i = 0; i < blurLevels; i++) {
+                ctx.save();
+                const blur = (blurLevels - i) * 8;
+                const alpha = (1 - i / blurLevels) * 0.4;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = blur;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = color;
+                const offset = i * 1;
+                ctx.fillRect(x - offset, y - offset, size + offset * 2, size + offset * 2);
+                ctx.restore();
+            }
+            // Core bez shadow
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, size, size);
+        }
+
+        // Kreslení
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Neonové čárky
+            drawLines();
+
+            // Jídlo s mega glow
+            const foodX = food.x * gridSize;
+            const foodY = food.y * gridSize;
+            drawGlowRect(foodX + 2, foodY + 2, gridSize - 4, '#ff00ff', 5);
+
+            // Had s gradient glow (head silnější, tail slabší)
+            snake.forEach((part, index) => {
+                const isHead = index === 0;
+                const color = isHead ? '#00ffff' : '#ffffff';
+                const tailRatio = index / snake.length;
+                const glowIntensity = 4 - tailRatio * 2; // Tail slabší glow
+                const partX = part.x * gridSize + 1;
+                const partY = part.y * gridSize + 1;
+                drawGlowRect(partX, partY, gridSize - 2, color, Math.max(2, glowIntensity));
+            });
+        }
+
+        // Aktualizace hry
+        function update() {
+            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            // Kolize se zdí
+            if (head.x < 0 || head.x >= gridCount || head.y < 0 || head.y >= gridCount) {
+                gameOver();
+                return;
+            }
+
+            // Kolize s tělem (kromě hlavy)
+            if (snake.slice(1).some(part => part.x === head.x && part.y === head.y)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            // Jídlo sežráno
+            const ate = head.x === food.x && head.y === food.y;
+            if (ate) {
+                score++;
+                document.getElementById('score').textContent = `Score: ${score}`;
+                food = {
+                    x: Math.floor(Math.random() * gridCount),
+                    y: Math.floor(Math.random() * gridCount)
+                };
+                // Bliknutí pole
+                canvas.style.animation = 'field-blink 0.3s ease-out';
+                setTimeout(() => { canvas.style.animation = ''; }, 300);
+            } else {
+                snake.pop();
+            }
+
+            draw();
+            updateLines();
+        }
+
+        // Countdown
+        function startCountdown() {
+            countdownActive = true;
+            const countdownEl = document.getElementById('countdown');
+            countdownEl.style.display = 'block';
+            const times = [3, 2, 1, 'GO!'];
+            let i = 0;
+            const cdInterval = setInterval(() => {
+                countdownEl.textContent = times[i];
+                i++;
+                if (i >= times.length) {
+                    clearInterval(cdInterval);
+                    countdownEl.style.display = 'none';
+                    countdownActive = false;
+                    gameInterval = setInterval(update, UPDATE_INTERVAL);
+                }
+            }, 800);
+        }
+
+        // Game Over
+        function gameOver() {
+            clearInterval(gameInterval);
+            gameRunning = false;
+            // Fade out hada
+            const fadeInterval = setInterval(() => {
+                if (snake.length > 0) {
+                    snake.pop();
+                    draw();
+                } else {
+                    clearInterval(fadeInterval);
+                    setTimeout(() => {
+                        document.getElementById('final-score').textContent = score;
+                        document.getElementById('game-over').style.display = 'block';
+                    }, 300);
+                }
+            }, 80);
+        }
+
+        // Start hry
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('game').style.display = 'flex';
+            resizeCanvas();
+            initLines();
+            snake = [{ x: Math.floor(gridCount / 2), y: Math.floor(gridCount / 2) }];
+            direction = { x: 1, y: 0 };
+            score = 0;
+            document.getElementById('score').textContent = `Score: ${score}`;
+            food = {
+                x: Math.floor(Math.random() * gridCount),
+                y: Math.floor(Math.random() * gridCount)
+            };
+            gameRunning = true;
+            startCountdown();
+            draw();
+        }
+
+        // Leaderboard funkce
+        function saveScore(name, score) {
+            let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboard.push({ name, score: Number(score) });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 50); // Max 50 záznamů
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+        }
+
+        function showLeaderboard() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'block';
+
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboard.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.textContent = `${index + 1}. ${entry.name} — ${entry.score}`;
+                list.appendChild(li);
+            });
+        }
+
+        // Event listeners
+        document.getElementById('play').addEventListener('click', startGame);
+        document.getElementById('leaderboard-btn').addEventListener('click', showLeaderboard);
+        document.getElementById('back-to-menu').addEventListener('click', () => {
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('menu').style.display = 'block';
+        });
+        document.getElementById('submit-score').addEventListener('click', () => {
+            const name = document.getElementById('player-name').value.trim() || 'Anonymous';
+            if (name) {
+                saveScore(name, score);
+                document.getElementById('game-over').style.display = 'none';
+                showLeaderboard();
+            }
+        });
+
+        // Enter pro submit
+        document.getElementById('player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('submit-score').click();
+            }
+        });
+
+        // Animace titulku (letter by letter)
+        window.addEventListener('load', () => {
+            const title = document.querySelector('#menu h1');
+            const originalText = title.textContent;
+            title.innerHTML = '';
+            Array.from(originalText).forEach((char, index) => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.style.animation = `neon-glow 1s ${index * 0.15}s infinite alternate`;
+                span.style.display = 'inline-block';
+                title.appendChild(span);
+            });
+        });
+    </script>
+</body>
+</html>
