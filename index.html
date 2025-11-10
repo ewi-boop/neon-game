@@ -20,7 +20,7 @@
             position: relative;
         }
 
-        /* Animované pozadí neonových čárek pro menu/leaderboard */
+        /* Animované pozadí neonových čárek všude */
         .background-lines {
             position: absolute;
             top: 0;
@@ -36,7 +36,7 @@
             width: 1px;
             height: 50px;
             background: #fff;
-            opacity: 0.2;
+            opacity: 0.3;
             filter: blur(1px);
             animation: fall linear infinite;
         }
@@ -123,16 +123,16 @@
 
         #canvas {
             border: 2px solid #fff;
-            box-shadow: 0 0 20px #fff, inset 0 0 20px #000;
-            background: #000;
+            box-shadow: 0 0 30px #fff;
+            background: transparent;
             max-width: 95vw;
             max-height: 95vh;
             display: block;
         }
 
         @keyframes field-blink {
-            0%, 100% { box-shadow: 0 0 20px #fff, inset 0 0 20px #000; }
-            50% { box-shadow: 0 0 50px #fff, 0 0 100px #00ffff, inset 0 0 30px #fff; }
+            0%, 100% { box-shadow: 0 0 30px #fff; }
+            50% { box-shadow: 0 0 60px #fff, 0 0 100px #00ffff; }
         }
 
         /* Game Over */
@@ -221,9 +221,9 @@
             font-size: clamp(5em, 20vw, 15em);
             z-index: 20;
             color: #fff;
-            text-shadow: 0 0 30px #fff;
+            text-shadow: 0 0 30px #fff, 0 0 50px #fff;
             display: none;
-            animation: neon-glow 1s infinite alternate;
+            animation: neon-glow 0.5s infinite alternate;
         }
     </style>
 </head>
@@ -262,10 +262,10 @@
     </div>
 
     <script>
-        // Animované pozadí čárek pro menu
+        // Animované pozadí čárek všude (hustější pro lepší efekt)
         function createLines() {
             const container = document.querySelector('.background-lines');
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < 120; i++) {
                 const line = document.createElement('div');
                 line.classList.add('line');
                 line.style.left = `${Math.random() * 100}vw`;
@@ -281,7 +281,7 @@
         // Herní proměnné
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const TILE_COUNT = 28; // Počet dlaždic pro responsivní grid
+        const TILE_COUNT = 28;
         let gridSize = 20;
         let gridCount = TILE_COUNT;
         let snake = [{ x: Math.floor(gridCount / 2), y: Math.floor(gridCount / 2) }];
@@ -290,10 +290,7 @@
         let score = 0;
         let gameRunning = false;
         let gameInterval;
-        let lines = []; // Neonové čárky v canvasu
         let countdownActive = false;
-        const UPDATE_INTERVAL = 120; // ms
-        const TIME_PER_UPDATE = UPDATE_INTERVAL / 1000; // s
 
         // Resize canvas
         function resizeCanvas() {
@@ -306,55 +303,7 @@
             canvas.style.height = size + 'px';
         }
         window.addEventListener('resize', resizeCanvas);
-        resizeCanvas(); // Inicializace
-
-        // Neonové čárky v canvasu - shodné parametry jako v CSS
-        function initLines() {
-            lines = [];
-            for (let i = 0; i < 80; i++) {
-                const duration = Math.random() * 8 + 8; // s
-                const height = Math.random() * 80 + 40;
-                const delay = Math.random() * 5; // s
-                const speed = (canvas.height + height) * TIME_PER_UPDATE / duration;
-                const delay_updates = delay / TIME_PER_UPDATE;
-                const delay_y = speed * delay_updates;
-                lines.push({
-                    x: Math.random() * canvas.width,
-                    y: -height - delay_y,
-                    speed: speed,
-                    height: height,
-                    opacity: Math.random() * 0.2 + 0.2 // 0.2-0.4
-                });
-            }
-        }
-
-        function updateLines() {
-            lines.forEach(line => {
-                line.y += line.speed;
-                if (line.y > canvas.height) {
-                    line.y = -line.height;
-                    line.x = Math.random() * canvas.width;
-                }
-            });
-        }
-
-        function drawLines() {
-            ctx.save();
-            ctx.shadowColor = '#ffffff';
-            ctx.shadowBlur = 1; // Shodné s CSS blur(1px)
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.lineCap = 'round';
-            lines.forEach(line => {
-                ctx.globalAlpha = line.opacity;
-                ctx.beginPath();
-                ctx.moveTo(line.x, line.y);
-                ctx.lineTo(line.x, line.y + line.height);
-                ctx.stroke();
-            });
-            ctx.restore();
-            ctx.globalAlpha = 1;
-        }
+        resizeCanvas();
 
         // Klávesy pro ovládání
         const keys = {
@@ -396,12 +345,9 @@
             ctx.fillRect(x, y, size, size);
         }
 
-        // Kreslení
+        // Kreslení (průhledné pozadí - vidí se CSS čárky skrz)
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Neonové čárky
-            drawLines();
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Průhledné vymazání
 
             // Jídlo s mega glow
             const foodX = food.x * gridSize;
@@ -413,7 +359,7 @@
                 const isHead = index === 0;
                 const color = isHead ? '#00ffff' : '#ffffff';
                 const tailRatio = index / snake.length;
-                const glowIntensity = 4 - tailRatio * 2; // Tail slabší glow
+                const glowIntensity = 4 - tailRatio * 2;
                 const partX = part.x * gridSize + 1;
                 const partY = part.y * gridSize + 1;
                 drawGlowRect(partX, partY, gridSize - 2, color, Math.max(2, glowIntensity));
@@ -424,13 +370,11 @@
         function update() {
             const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
 
-            // Kolize se zdí
             if (head.x < 0 || head.x >= gridCount || head.y < 0 || head.y >= gridCount) {
                 gameOver();
                 return;
             }
 
-            // Kolize s tělem (kromě hlavy)
             if (snake.slice(1).some(part => part.x === head.x && part.y === head.y)) {
                 gameOver();
                 return;
@@ -438,7 +382,6 @@
 
             snake.unshift(head);
 
-            // Jídlo sežráno
             const ate = head.x === food.x && head.y === food.y;
             if (ate) {
                 score++;
@@ -447,7 +390,6 @@
                     x: Math.floor(Math.random() * gridCount),
                     y: Math.floor(Math.random() * gridCount)
                 };
-                // Bliknutí pole
                 canvas.style.animation = 'field-blink 0.3s ease-out';
                 setTimeout(() => { canvas.style.animation = ''; }, 300);
             } else {
@@ -455,7 +397,6 @@
             }
 
             draw();
-            updateLines();
         }
 
         // Countdown
@@ -472,7 +413,7 @@
                     clearInterval(cdInterval);
                     countdownEl.style.display = 'none';
                     countdownActive = false;
-                    gameInterval = setInterval(update, UPDATE_INTERVAL);
+                    gameInterval = setInterval(update, 120);
                 }
             }, 800);
         }
@@ -481,7 +422,6 @@
         function gameOver() {
             clearInterval(gameInterval);
             gameRunning = false;
-            // Fade out hada
             const fadeInterval = setInterval(() => {
                 if (snake.length > 0) {
                     snake.pop();
@@ -503,7 +443,6 @@
             document.getElementById('game-over').style.display = 'none';
             document.getElementById('game').style.display = 'flex';
             resizeCanvas();
-            initLines();
             snake = [{ x: Math.floor(gridCount / 2), y: Math.floor(gridCount / 2) }];
             direction = { x: 1, y: 0 };
             score = 0;
@@ -522,7 +461,7 @@
             let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
             leaderboard.push({ name, score: Number(score) });
             leaderboard.sort((a, b) => b.score - a.score);
-            leaderboard = leaderboard.slice(0, 50); // Max 50 záznamů
+            leaderboard = leaderboard.slice(0, 50);
             localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
         }
 
@@ -560,14 +499,13 @@
             }
         });
 
-        // Enter pro submit
         document.getElementById('player-name').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 document.getElementById('submit-score').click();
             }
         });
 
-        // Animace titulku (letter by letter)
+        // Animace titulku
         window.addEventListener('load', () => {
             const title = document.querySelector('#menu h1');
             const originalText = title.textContent;
